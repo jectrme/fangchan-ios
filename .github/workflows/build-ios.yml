@@ -1,0 +1,77 @@
+name: Build iOS IPA (unsigned)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装依赖
+        run: npm install --no-audit --no-fund
+
+      - name: 检查 CocoaPods
+        run: pod --version || (sudo gem install cocoapods -v 1.16.2 --no-document)
+
+      - name: 生成 iOS 工程
+        run: npx cap add ios
+
+      - name: 同步网页资源
+        run: npx cap sync ios
+
+      - name: 安装 Pods
+        run: cd ios/App && pod install
+
+      - name: 设置中文应用名
+        run: |
+          P="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 房产文案" "$P" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string 房产文案" "$P"
+
+      - name: 替换应用图标
+        run: cp res/icon-1024.png "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"
+
+      - name: 编译（不签名）
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath ./build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: 打包 IPA
+        run: |
+          APP=$(find ios/App/build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -n 1)
+          echo "打包的 App：$APP"
+          mkdir -p out/Payload
+          cp -R "$APP" out/Payload/
+          cd out
+          zip -qry ../fangchan-wenan-unsigned.ipa Payload
+          ls -lh ../fangchan-wenan-unsigned.ipa
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: fangchan-wenan-unsigned-ipa
+          path: fangchan-wenan-unsigned.ipa
+          retention-days: 30
