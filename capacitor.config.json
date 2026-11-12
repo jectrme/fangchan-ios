@@ -1,0 +1,8 @@
+{
+  "appId": "com.fangchan.wenan",
+  "appName": "fangchan",
+  "webDir": "www",
+  "server": {
+    "hostname": "localhost"
+  }
+}
