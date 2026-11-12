@@ -41,6 +41,14 @@ jobs:
           P="ios/App/App/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 房产文案" "$P" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string 房产文案" "$P"
 
+      - name: 添加相册权限说明
+        run: |
+          P="ios/App/App/Info.plist"
+          for KEY in NSPhotoLibraryAddUsageDescription NSPhotoLibraryUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Set :$KEY 保存加边框图片到相册" "$P" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :$KEY string 保存加边框图片到相册" "$P"
+          done
+          /usr/libexec/PlistBuddy -c "Print" "$P" | head -n 40
+
       - name: 替换应用图标
         run: cp res/icon-1024.png "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"
 
